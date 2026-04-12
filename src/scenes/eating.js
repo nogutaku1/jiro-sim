@@ -49,9 +49,6 @@
     },
   };
 
-  /**
-   * ライフ0時の強制退店画面
-   */
   function _showFailScreen(container, result) {
     container.innerHTML = '';
 
@@ -74,9 +71,15 @@
     container.appendChild(wrap);
 
     var h = document.createElement('div');
-    h.style.cssText = 'font-size:28px;color:#ff4444;';
-    h.textContent = '残してしまった…';
+    h.style.cssText = 'font-size:32px;color:#ff4444;font-weight:900;';
+    h.textContent = 'GAME OVER';
     wrap.appendChild(h);
+
+    var deathReason = result.deathReason || '残してしまった罪で出禁';
+    var subH = document.createElement('div');
+    subH.style.cssText = 'font-size:20px;color:#f5d623;font-weight:bold;margin-top:-10px;';
+    subH.textContent = deathReason;
+    wrap.appendChild(subH);
 
     var sub = document.createElement('div');
     sub.style.cssText = 'font-size:14px;color:#999;line-height:1.8;';
@@ -85,13 +88,16 @@
 
     var msg = document.createElement('div');
     msg.style.cssText = 'font-size:13px;color:#cc6666;margin-top:8px;';
-    msg.textContent = '二郎では残すのは御法度…次は完食しよう。';
+    msg.textContent = deathReason.includes('ロット') ? 'ギルティ！ロットを乱す者は二郎に在らず。' : '二郎では残すのは御法度…次は完食しよう。';
     wrap.appendChild(msg);
+
+    var btnWrap = document.createElement('div');
+    btnWrap.style.cssText = 'display:flex;flex-direction:column;gap:12px;margin-top:16px;';
+    wrap.appendChild(btnWrap);
 
     var btn = document.createElement('button');
     btn.className = 'btn-jiro';
     btn.textContent = 'もう一杯';
-    btn.style.marginTop = '24px';
     btn.addEventListener('click', function () {
       // 状態リセット
       engine.state.score = 0;
@@ -100,7 +106,41 @@
       engine.state.toppings = [];
       engine.changeScene('title');
     });
-    wrap.appendChild(btn);
+    btnWrap.appendChild(btn);
+
+    // Xでシェア
+    var shareBtn = document.createElement('button');
+    shareBtn.className = 'btn-jiro';
+    shareBtn.style.cssText += ';background:#333;color:#fff;box-shadow:4px 4px 0 #111;font-size:14px;padding:10px 32px;';
+    shareBtn.textContent = 'Xでシェア';
+    shareBtn.addEventListener('click', function () {
+      var state = engine.state;
+      var toppingsStr = (state.toppings && Object.values(state.toppings).some(v => v !== 'なし')) 
+        ? Object.entries(state.toppings).filter(e => e[1] !== 'なし').map(e => e[0] + e[1]).join(' ') + 'で'
+        : 'そのまま';
+
+      var shareText =
+        '【JIRO Sim】 ' + deathReason + 'になりました。\n' +
+        'スコア: ' + result.score + '点\n' +
+        'コール: ' + toppingsStr + '\n#JIROSim';
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(shareText).then(function () {
+          shareBtn.textContent = 'コピーしました！';
+          setTimeout(function () { shareBtn.textContent = 'Xでシェア'; }, 2000);
+        });
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = shareText;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        shareBtn.textContent = 'コピーしました！';
+        setTimeout(function () { shareBtn.textContent = 'Xでシェア'; }, 2000);
+      }
+    });
+    btnWrap.appendChild(shareBtn);
   }
 
   // ========================================
@@ -335,13 +375,11 @@
     shareBtn.style.cssText += ';background:#333;color:#fff;box-shadow:4px 4px 0 #111;font-size:14px;padding:10px 32px;';
     shareBtn.textContent = 'Xでシェア';
     shareBtn.addEventListener('click', function () {
-      var oshiboriText = state.usedOshibori ? 'おしぼり使用済み✓' : 'おしぼり忘れた…';
+      var oshiboriText = state.usedOshibori ? '完璧なムーブで退店しました。' : 'カウンターを拭かなかった罪で出禁になりました。';
       var shareText =
-        'ラーメン二郎シミュレーター｜' +
-        rankInfo.title + '(' + rankInfo.rank + 'ランク)達成！' +
-        state.score + '点｜' +
-        'コール: ' + toppingsStr + '｜' +
-        oshiboriText;
+        '【JIRO Sim】 ' + oshiboriText + '\n' +
+        'スコア: ' + state.score + '点 (' + rankInfo.title + ')\n' +
+        'コール: ' + toppingsStr + '\n#JIROSim';
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(shareText).then(function () {

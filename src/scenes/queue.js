@@ -313,9 +313,55 @@
 
           typeText(msgWin, '「もたもたしてんじゃねぇ！帰れ！」', 30, function () {
             var goBack = setTimeout(function () {
-              engine.changeScene('title');
-            }, 2500);
-            // no need to track — scene exits
+              container.innerHTML = '';
+              var bg = document.createElement('div');
+              bg.style.cssText = 'position:absolute;inset:0;background:#0a0a0a;z-index:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;gap:20px;padding:20px;';
+              container.appendChild(bg);
+              
+              var h = document.createElement('div');
+              h.style.cssText = 'font-size:32px;color:#ff4444;font-weight:900;';
+              h.textContent = 'GAME OVER';
+              bg.appendChild(h);
+
+              var reason = document.createElement('div');
+              reason.style.cssText = 'font-size:20px;color:#f5d623;font-weight:bold;margin-top:-10px;';
+              reason.textContent = '食券を見せるのが遅れた罪で出禁';
+              bg.appendChild(reason);
+
+              var btnWrap = document.createElement('div');
+              btnWrap.style.cssText = 'display:flex;flex-direction:column;gap:12px;margin-top:16px;';
+              bg.appendChild(btnWrap);
+
+              var btn = document.createElement('button');
+              btn.className = 'btn-jiro'; 
+              btn.textContent = 'やり直す';
+              btn.addEventListener('click', function() { engine.changeScene('title'); });
+              btnWrap.appendChild(btn);
+
+              var shareBtn = document.createElement('button');
+              shareBtn.className = 'btn-jiro';
+              shareBtn.style.cssText += ';background:#333;color:#fff;box-shadow:4px 4px 0 #111;font-size:14px;padding:10px 32px;';
+              shareBtn.textContent = 'Xでシェア';
+              shareBtn.addEventListener('click', function() {
+                var txt = '【JIRO Sim】 食券を見せるのが遅れた罪で出禁になりました。\n#JIROSim';
+                if (navigator.clipboard) { 
+                  navigator.clipboard.writeText(txt).then(function() {
+                    shareBtn.textContent="コピーしました！";
+                    setTimeout(function(){ shareBtn.textContent = 'Xでシェア'; }, 2000);
+                  }); 
+                } else {
+                  var ta = document.createElement('textarea');
+                  ta.value = txt;
+                  document.body.appendChild(ta);
+                  ta.select();
+                  document.execCommand('copy');
+                  document.body.removeChild(ta);
+                  shareBtn.textContent = 'コピーしました！';
+                  setTimeout(function () { shareBtn.textContent = 'Xでシェア'; }, 2000);
+                }
+              });
+              btnWrap.appendChild(shareBtn);
+            }, 1000);
           });
         }, 3000);
         self.timers.push(deadlineTimer);

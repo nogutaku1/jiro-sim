@@ -247,6 +247,26 @@
       'text-shadow:0 0 10px rgba(0,0,0,0.9);transform:translateY(-50%);';
     c.appendChild(this.uiEls.cheerText);
 
+    // CSSアニメーション注入
+    if (!document.getElementById('jiro-rhythm-shake')) {
+      var style = document.createElement('style');
+      style.id = 'jiro-rhythm-shake';
+      style.textContent =
+        '@keyframes rhythm-shake {' +
+        '  0%, 100% { transform: translateX(0); }' +
+        '  25% { transform: translateX(-10px) translateY(5px); }' +
+        '  50% { transform: translateX(8px) translateY(-4px); }' +
+        '  75% { transform: translateX(-6px) translateY(2px); }' +
+        '}' +
+        '@keyframes rhythm-muse-shake {' +
+        '  0%, 100% { transform: translateX(0); filter: invert(0); }' +
+        '  25% { transform: translateX(-15px) translateY(10px); filter: invert(0.8); }' +
+        '  50% { transform: translateX(15px) translateY(-10px); filter: invert(0); }' +
+        '  75% { transform: translateX(-10px) translateY(5px); filter: invert(0.8); }' +
+        '}';
+      document.head.appendChild(style);
+    }
+
     // クリック/タッチ
     this.fieldEl.addEventListener('click', this._boundClick);
     this.fieldEl.addEventListener('touchstart', this._boundClick);
@@ -444,6 +464,31 @@
     };
     el.style.color = colors[judge] || '#fff';
 
+    // 極太フォントの適用
+    el.style.fontFamily = 'Impact, "Yu Mincho", "MS Mincho", serif';
+    el.style.fontWeight = '900';
+    if (judge === 'PERFECT' || judge === 'MUSE') {
+      el.style.fontSize = '64px';
+    } else {
+      el.style.fontSize = '36px';
+    }
+
+    // 画面シェイク＆ハプティックフィードバック
+    var self = this;
+    if (judge === 'PERFECT') {
+        if (navigator.vibrate) navigator.vibrate(30);
+        this.container.style.animation = 'rhythm-shake 0.2s';
+        setTimeout(function() { self.container.style.animation = ''; }, 200);
+    } else if (judge === 'MUSE') {
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        this.container.style.animation = 'rhythm-muse-shake 0.4s';
+        setTimeout(function() { self.container.style.animation = ''; }, 400);
+    } else if (judge === 'GREAT' || judge === 'GOOD') {
+        if (navigator.vibrate) navigator.vibrate(10);
+    } else if (judge === 'MISS') {
+        if (navigator.vibrate) navigator.vibrate(50);
+    }
+
     clearTimeout(this._judgeTimer);
     this._judgeTimer = setTimeout(function () {
       el.style.opacity = '0';
@@ -485,6 +530,26 @@
   RhythmEngine.prototype._updateProgressUI = function () {
     var pct = Math.min(100, (this.elapsed / this.duration) * 100);
     this.uiEls.progressBar.style.width = pct + '%';
+
+    // ロットプレッシャーの実装
+    var expectedScore = (pct / 100) * 1500; // 1500点を基準に進捗を計算
+    if (this.score < expectedScore - 300) {
+      if (!this.uiEls.lotWarning) {
+        this.uiEls.lotWarning = document.createElement('div');
+        this.uiEls.lotWarning.style.cssText = 'position:absolute;inset:0;background:rgba(255,0,0,0.3);z-index:25;pointer-events:none;';
+        this.container.appendChild(this.uiEls.lotWarning);
+        
+        var txt = document.createElement('div');
+        txt.textContent = "ロットを乱している…！";
+        txt.style.cssText = 'position:absolute;top:30%;width:100%;text-align:center;color:#ff4444;font-size:32px;font-weight:900;text-shadow:0 0 16px rgba(0,0,0,1);animation:jiro-blink 0.3s infinite;';
+        this.uiEls.lotWarning.appendChild(txt);
+      }
+    } else {
+      if (this.uiEls.lotWarning) {
+        this.uiEls.lotWarning.parentNode.removeChild(this.uiEls.lotWarning);
+        this.uiEls.lotWarning = null;
+      }
+    }
   };
 
   RhythmEngine.prototype._updateBg = function () {
@@ -530,11 +595,31 @@
     }
     this.notes = [];
 
+    // ロット警告削除
+    if (this.uiEls.lotWarning) {
+      this.uiEls.lotWarning.parentNode.removeChild(this.uiEls.lotWarning);
+      this.uiEls.lotWarning = null;
+    }
+
+    // 終了理由を結果に含める
+    var isGuilty = false;
+    var deathReason = "";
+    if (!cleared) {
+      isGuilty = true;
+      if (this.score < (this.duration / 100) * 1500 - 300) {
+        deathReason = "ロット乱しの罪で出禁";
+      } else {
+        deathReason = "残してしまった罪で出禁";
+      }
+    }
+
     this.onEnd({
       score:    this.score,
       maxCombo: this.maxCombo,
       life:     this.life,
       cleared:  cleared,
+      isGuilty: isGuilty,
+      deathReason: deathReason
     });
   };
 
