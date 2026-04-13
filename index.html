@@ -316,6 +316,7 @@ function startSceneSE(type) {
         } catch(e) {}
       }, 800 + Math.random() * 1200);
 
+      sceneSEGain.gain.setValueAtTime(0, audioCtx.currentTime);
       sceneSEGain.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 0.5);
 
     } else if (type === 'kitchen' || type === 'kitchen_loud') {
@@ -392,6 +393,7 @@ function startSceneSE(type) {
         } catch(e) {}
       }, 1500 + Math.random() * 2000);
 
+      sceneSEGain.gain.setValueAtTime(0, audioCtx.currentTime);
       sceneSEGain.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + 0.5);
 
     } else if (type === 'calm') {
@@ -420,6 +422,7 @@ function startSceneSE(type) {
       src.start();
       sceneSENodes.push(src);
 
+      sceneSEGain.gain.setValueAtTime(0, audioCtx.currentTime);
       sceneSEGain.gain.linearRampToValueAtTime(0.06, audioCtx.currentTime + 1.0);
     }
   } catch(e) {}
@@ -1963,12 +1966,6 @@ function sceneEatingRhythm() {
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(n.type.emoji, n.x, n.y + NOTE_SIZE / 2);
-          // Tutorial "TAP!" indicator
-          if (n.isTutorial && !n.type.skull) {
-            ctx.fillStyle = '#fff';
-            ctx.font = '700 16px sans-serif';
-            ctx.fillText('↓ TAP!', n.x, n.y - 10);
-          }
           ctx.restore();
         }
 
@@ -2063,11 +2060,11 @@ function sceneExit() {
 
     // Bowl hint - positioned below the "退店する" button area
     const bowlHint = document.createElement('div');
-    bowlHint.style.cssText = 'position:absolute;bottom:60px;right:40px;width:80px;height:80px;border-radius:50%;border:2px solid rgba(212,160,23,0.5);z-index:5;animation:blinkHint 1.5s ease-in-out infinite;cursor:pointer;';
+    bowlHint.style.cssText = 'position:absolute;bottom:60px;left:50%;transform:translateX(-50%);width:80px;height:80px;border-radius:50%;border:2px solid rgba(212,160,23,0.5);z-index:5;animation:blinkHint 1.5s ease-in-out infinite;cursor:pointer;';
     scene.appendChild(bowlHint);
 
     const bowlZone = document.createElement('div');
-    bowlZone.style.cssText = 'position:absolute;bottom:50px;right:30px;width:100px;height:100px;z-index:6;cursor:pointer;opacity:0.01;';
+    bowlZone.style.cssText = 'position:absolute;bottom:50px;left:50%;transform:translateX(-50%);width:100px;height:100px;z-index:6;cursor:pointer;opacity:0.01;';
     scene.appendChild(bowlZone);
 
     bowlZone.addEventListener('pointerdown', (e) => {
