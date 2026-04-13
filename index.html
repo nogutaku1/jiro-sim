@@ -3,20 +3,21 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>JIRO Sim</title>
-<meta property="og:title" content="JIRO Sim - THEラーメン二郎シミュレータ" />
+<meta property="og:title" content="JIRO Sim - THE JIROシミュレータ" />
 <meta property="og:description" content="行列、食券、コール、そしてロットのプレッシャー。伝説の店舗を完全再現したブラウザベースのリズムゲーム。" />
 <meta property="og:image" content="/assets/ogp.jpg" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="JIRO Sim - THEラーメン二郎シミュレータ" />
+<meta name="twitter:title" content="JIRO Sim - THE JIROシミュレータ" />
 <meta name="twitter:description" content="行列、食券、コール、そしてロットのプレッシャー。伝説の店舗を完全再現したブラウザベースのリズムゲーム。" />
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&display=swap" rel="stylesheet">
 <style>
 /* ===== RESET & BASE ===== */
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:'Noto Sans JP',sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none;}
-#game{width:400px;height:700px;position:relative;overflow:hidden;background:#000;touch-action:manipulation;}
+#game{width:100vw;height:100vh;max-width:480px;max-height:850px;position:relative;overflow:hidden;background:#111;touch-action:manipulation;margin:0 auto;}
+canvas{width:100%;height:100%;object-fit:contain;pointer-events:none;}
 .scene{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;pointer-events:none;transition:opacity 0.5s ease;display:flex;flex-direction:column;align-items:center;justify-content:center;}
 .scene.active{opacity:1;pointer-events:auto;}
 .bg-img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:0;}
@@ -61,8 +62,8 @@ body{background:#000;display:flex;justify-content:center;align-items:center;min-
 /* ===== TOPPING PILLS ===== */
 .topping-row{display:flex;align-items:center;margin:6px 0;width:100%;}
 .topping-label{color:#D4A017;font-weight:900;font-size:14px;width:90px;text-align:right;margin-right:8px;}
-.pill-group{display:flex;gap:4px;flex-wrap:wrap;}
-.pill{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid rgba(255,255,255,0.3);color:#fff;background:rgba(255,255,255,0.1);transition:all 0.2s;}
+.pill-group{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;}
+.pill{padding:6px 10px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:2px solid rgba(255,255,255,0.3);color:#fff;background:rgba(255,255,255,0.1);transition:all 0.2s;white-space:nowrap;}
 .pill.selected{background:#D4A017;color:#000;border-color:#D4A017;}
 
 /* ===== RHYTHM GAME ===== */
@@ -74,7 +75,7 @@ body{background:#000;display:flex;justify-content:center;align-items:center;min-
 .rhythm-combo{top:50px;left:50%;transform:translateX(-50%);font-size:28px;color:#D4A017;text-shadow:0 0 10px rgba(212,160,23,0.5);}
 
 /* ===== JUDGMENT TEXT ===== */
-.judgment-text{position:absolute;z-index:4;left:50%;top:480px;transform:translateX(-50%);font-size:32px;font-weight:900;pointer-events:none;animation:judgmentPop 0.6s ease forwards;}
+.judgment-text{position:absolute;z-index:4;left:50%;top:480px;transform:translateX(-50%);font-size:32px;font-weight:900;pointer-events:none;animation:judgmentPop 0.6s ease forwards;text-shadow:0px 0px 8px #000, 0px 0px 15px #000, 2px 2px 2px #000;}
 
 /* ===== DIALOG ===== */
 .dialog-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:10;display:flex;align-items:center;justify-content:center;}
@@ -130,7 +131,45 @@ function initAudio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
 }
+function playMiss() {
+  if (!audioCtx) return;
+  try {
+    const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(150, audioCtx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.2);
+    g.gain.setValueAtTime(0.5, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + 0.2);
+  } catch(e) {}
+}
+function playSlurp() {
+  if (!audioCtx) return;
+  try {
+    const size = audioCtx.sampleRate * 0.2;
+    const buffer = audioCtx.createBuffer(1, size, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let lastOut = 0;
+    for (let i=0; i<size; i++) {
+        let white = Math.random() * 2 - 1;
+        data[i] = (lastOut + (0.02 * white)) / 1.02;
+        lastOut = data[i]; data[i] *= 3.5;
+    }
+    const src = audioCtx.createBufferSource(); src.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter(); filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(300, audioCtx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(4000, audioCtx.currentTime + 0.15);
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(2.0, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+    src.connect(filter); filter.connect(g); g.connect(audioCtx.destination);
+    src.start();
+  } catch(e) {}
+}
 function playSound(freq, dur, type, vol) {
+  if (type === 'slurp') return playSlurp();
+  if (type === 'miss') return playMiss();
   if (!audioCtx) return;
   try {
     const o = audioCtx.createOscillator();
@@ -143,7 +182,7 @@ function playSound(freq, dur, type, vol) {
     o.start(); o.stop(audioCtx.currentTime + dur);
   } catch(e) {}
 }
-document.addEventListener('pointerdown', function _initA() { initAudio(); document.removeEventListener('pointerdown', _initA); }, { once: true });
+document.addEventListener('pointerdown', function _initA() { initAudio(); if(navigator.vibrate) navigator.vibrate(10); }, false);
 
 const GAME_URL = '';
 
@@ -210,7 +249,7 @@ const i18n = {
     joinQueue: '行列に並ぶ',
     ranking: 'ランキング',
     goHome: '帰宅する',
-    leaveMsgs: ["…やっぱり並ぼう", "二郎に背を向けられる人間はいない", "あなたはもう二郎の虜です", "ロットを乱す気ですか？", "逃げられない。さあ、並ぼう。"],
+    leaveMsgs: ["…やっぱり並ぼう", "JIROに背を向けられる人間はいない", "あなたはもうJIROの虜です", "ロットを乱す気ですか？", "逃げられない。さあ、並ぼう。"],
     // Ranking
     world: '世界',
     myself: '自分',
@@ -285,11 +324,11 @@ const i18n = {
     crimeTicket: '罪状：食券提示の遅延行為',
     crimeLeftover: '罪状：残し',
     // Ranks
-    rankBeginner: 'JIRO初心者',
+    rankBeginner: 'JIROにわか',
     rankMaster: 'JIROマスター',
     rankLian: 'JIROリアン',
     rankIntermediate: 'JIRO中級者',
-    rankAllMax: '全マシマシの覇者',
+    rankBanned: '出禁寸前',
     // Share
     sharePts: '点',
     shareCall: 'コール',
@@ -405,12 +444,11 @@ function createLangToggle() {
 }
 
 function getRankTitle() {
-  let key = 'rankBeginner';
+  let key = 'rankBanned';
   if (gameState.score >= 2500) key = 'rankMaster';
   else if (gameState.score >= 2000) key = 'rankLian';
   else if (gameState.score >= 1500) key = 'rankIntermediate';
-  const tp = gameState.toppings;
-  if (tp.ninniku >= 3 && tp.yasai >= 2 && tp.abura >= 2 && tp.karame >= 2) key = 'rankAllMax';
+  else if (gameState.score >= 500)  key = 'rankBeginner';
   return t(key);
 }
 
@@ -424,8 +462,9 @@ function resetGameState() {
   };
 }
 
-function saveRanking(score, rank, callText) {
+function saveRanking(score, rank, callText, playerName) {
   if (score <= 0) return;
+  const pName = playerName || 'ANONYM';
   // Save to Supabase (non-blocking)
   supabasePost('rankings', {
     score: score,
@@ -433,14 +472,15 @@ function saveRanking(score, rank, callText) {
     call_text: callText,
     max_combo: gameState.maxCombo,
     ticket: gameState.ticketName || '',
-    difficulty: gameState.difficulty
+    difficulty: gameState.difficulty,
+    name: pName
   });
   // Also save locally as fallback
   let rankings = [];
   try { rankings = JSON.parse(localStorage.getItem('jiro_rankings') || '[]'); } catch(e) {}
   const now = new Date();
   const dateStr = (now.getMonth()+1) + '/' + now.getDate() + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-  rankings.push({ score, rank, call: callText, date: dateStr });
+  rankings.push({ score, rank, call: callText, date: dateStr, name: pName });
   rankings.sort((a,b) => b.score - a.score);
   rankings = rankings.slice(0, 20);
   try { localStorage.setItem('jiro_rankings', JSON.stringify(rankings)); } catch(e) {}
@@ -514,13 +554,14 @@ function sceneTitle() {
   content.style.justifyContent = 'center';
   content.style.gap = '20px';
   content.innerHTML = `
-    <h1 style="font-size:56px;font-weight:900;color:#fff;letter-spacing:4px;text-shadow:0 0 20px rgba(212,160,23,0.6),0 0 40px rgba(212,160,23,0.3);">JIRO Sim</h1><div style="font-size:10px;color:rgba(255,255,255,0.35);font-weight:700;letter-spacing:2px;margin-top:-4px;">Ver 1.0</div>
+    <h1 style="font-size:56px;font-weight:900;color:#fff;letter-spacing:4px;text-shadow:0 0 20px rgba(212,160,23,0.6),0 0 40px rgba(212,160,23,0.3);">JIRO Sim</h1><div style="font-size:10px;color:rgba(255,255,255,0.35);font-weight:700;letter-spacing:2px;margin-top:-4px;">Ver 1.1</div>
     <div style="display:flex;flex-direction:column;gap:12px;margin-top:40px;align-items:center;">
       <button class="btn-gold" id="btn-start">${t('joinQueue')}</button>
-      <button class="btn-secondary" id="btn-ranking">${t('ranking')}</button>
       <button class="btn-secondary" id="btn-leave">${t('goHome')}</button>
+      <button class="btn-secondary" id="btn-ranking" style="margin-top:20px;border-color:#D4A017;color:#D4A017;background:rgba(212,160,23,0.1);">🌍 ${t('ranking')}</button>
     </div>
     <div id="leave-msg" style="color:#fff;font-size:14px;font-weight:700;opacity:0;transition:opacity 0.3s;margin-top:10px;"></div>
+    <div style="position:absolute; bottom:15px; font-size:10px; color:rgba(255,255,255,0.4);"><a href="https://x.com/nogutaku" target="_blank" style="color:inherit;text-decoration:none;">Created by @nogutaku</a></div>
   `;
   scene.appendChild(content);
 
@@ -598,16 +639,18 @@ function sceneRanking() {
       const call = isGlobal ? (r.call_text || '') : (r.call || '');
       const date = isGlobal ? (r.created_at ? new Date(r.created_at).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '') : (r.date || '');
       const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1) + '位';
+      const name = r.name || 'ANONYM';
       return `
         <div style="background:rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;width:100%;max-width:340px;border-left:4px solid ${i<3?'#D4A017':'rgba(255,255,255,0.2)'};">
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <span style="font-size:14px;color:${i<3?'#D4A017':'#bbb'};font-weight:900;min-width:40px;">${medal}</span>
+            <span style="font-size:14px;color:#fff;font-weight:900;flex-grow:1;margin-left:8px;">${name}</span>
             <span style="font-size:20px;font-weight:900;color:#fff;">${score}</span>
-            <span style="font-size:11px;font-weight:700;color:#D4A017;min-width:90px;text-align:right;">${rank}</span>
           </div>
-          <div style="display:flex;justify-content:space-between;margin-top:6px;">
-            <span style="font-size:10px;color:#aaa;">${call}</span>
-            <span style="font-size:10px;color:#666;">${date}</span>
+          <div style="display:flex;justify-content:space-between;margin-top:6px;align-items:center;">
+            <span style="font-size:11px;font-weight:700;color:#D4A017;margin-right:8px;white-space:nowrap;">${rank}</span>
+            <span style="font-size:10px;color:#aaa;flex-grow:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${call}</span>
+            <span style="font-size:10px;color:#666;margin-left:8px;">${date}</span>
           </div>
         </div>`;
     }).join('');
@@ -615,7 +658,7 @@ function sceneRanking() {
 
   async function loadGlobal() {
     listEl.innerHTML = '<div style="color:#888;margin:40px 0;">' + t('loading') + '</div>';
-    const data = await supabaseGet('rankings', 'select=score,rank_title,call_text,created_at&order=score.desc&limit=20');
+    const data = await supabaseGet('rankings', 'select=score,rank_title,call_text,created_at,name&order=score.desc&limit=20');
     if (data.length > 0) {
       renderList(data, true);
     } else {
@@ -979,7 +1022,7 @@ function sceneGarlicCall() {
   });
 
   // Countdown
-  let countVal = 8;
+  let countVal = 5;
   const cdEl = content.querySelector('#countdown-garlic');
   const cdInt = addInterval(() => {
     countVal--;
@@ -1053,14 +1096,14 @@ function sceneEatingRhythm() {
   // Difficulty settings
   const diffSettings = {
     easy:   { fallDuration: 3000, totalTime: 25, spawnMin: 700, spawnMax: 1100, skullMin: 8000, skullMax: 12000 },
-    normal: { fallDuration: 2500, totalTime: 30, spawnMin: 450, spawnMax: 800,  skullMin: 5000, skullMax: 8000 },
-    hard:   { fallDuration: 2000, totalTime: 35, spawnMin: 300, spawnMax: 600,  skullMin: 3000, skullMax: 5000 }
+    normal: { fallDuration: 2200, totalTime: 30, spawnMin: 400, spawnMax: 700,  skullMin: 5000, skullMax: 8000 },
+    hard:   { fallDuration: 1500, totalTime: 35, spawnMin: 200, spawnMax: 350,  skullMin: 2000, skullMax: 4000 }
   };
   const diff = Object.assign({}, diffSettings[gameState.difficulty]);
     // Topping modifiers
     const tp = gameState.toppings;
     if (tp.yasai === 1) { diff.spawnMin = Math.round(diff.spawnMin * 0.85); diff.spawnMax = Math.round(diff.spawnMax * 0.85); }
-    if (tp.yasai >= 2) { diff.spawnMin = Math.round(diff.spawnMin * 0.75); diff.spawnMax = Math.round(diff.spawnMax * 0.75); }
+    if (tp.yasai >= 2) { diff.spawnMin = Math.round(diff.spawnMin * 0.65); diff.spawnMax = Math.round(diff.spawnMax * 0.65); }
     if (tp.abura === 1) { diff.skullMin = Math.round(diff.skullMin * 0.7); diff.skullMax = Math.round(diff.skullMax * 0.7); }
     if (tp.abura >= 2) { diff.skullMin = Math.round(diff.skullMin * 0.5); diff.skullMax = Math.round(diff.skullMax * 0.5); }
     if (tp.karame === 1) { diff.totalTime += 3; }
@@ -1263,7 +1306,7 @@ function sceneEatingRhythm() {
         closest.judged = true;
         if (closest.type.skull) {
           // Hit skull = bad
-          gameState.score = Math.max(0, gameState.score - 50); playSound(150, 0.2, 'sawtooth', 0.25);
+          gameState.score = Math.max(0, gameState.score - 50); playSound(150, 0.2, 'miss', 0.25);
           gameState.combo = 0;
           flashScreen('rgba(255,0,0,0.5)');
           showJudgment('-50', '#E74C3C');
@@ -1273,9 +1316,9 @@ function sceneEatingRhythm() {
           let ninnikuBonus = 1;
           if (gameState.toppings.ninniku >= 2) ninnikuBonus = 1.3;
           if (gameState.toppings.ninniku >= 3) ninnikuBonus = 1.5;
-          if (closestDist <= 20) { pts = Math.round(100 * ninnikuBonus); label = t('perfectHit'); color = '#D4A017'; flashScreen('rgba(212,160,23,0.3)'); playSound(880, 0.1, 'sine', 0.25); if (navigator.vibrate) navigator.vibrate(30); }
-          else if (closestDist <= 45) { pts = Math.round(70 * ninnikuBonus); label = t('goodHit'); color = '#4FC3F7'; playSound(660, 0.08, 'sine', 0.2); if (navigator.vibrate) navigator.vibrate(10); }
-          else { pts = Math.round(30 * ninnikuBonus); label = t('okHit'); color = '#4CAF50'; playSound(440, 0.08, 'sine', 0.15); if (navigator.vibrate) navigator.vibrate(5); }
+          if (closestDist <= 20) { pts = Math.round(100 * ninnikuBonus); label = t('perfectHit'); color = '#D4A017'; flashScreen('rgba(212,160,23,0.3)'); playSound(880, 0.1, 'slurp', 0.25); if (navigator.vibrate) navigator.vibrate(30); }
+          else if (closestDist <= 45) { pts = Math.round(70 * ninnikuBonus); label = t('goodHit'); color = '#4FC3F7'; playSound(660, 0.08, 'slurp', 0.2); if (navigator.vibrate) navigator.vibrate(10); }
+          else { pts = Math.round(30 * ninnikuBonus); label = t('okHit'); color = '#4CAF50'; playSound(440, 0.08, 'slurp', 0.15); if (navigator.vibrate) navigator.vibrate(5); }
           pts = Math.floor(pts * getMultiplier());
           gameState.score += pts;
           gameState.combo++;
@@ -1443,11 +1486,11 @@ function sceneExit() {
 
     // Bowl hint - blinking circle at center-bottom where the bowl is
     const bowlHint = document.createElement('div');
-    bowlHint.style.cssText = 'position:absolute;bottom:220px;left:50%;transform:translateX(-50%);width:80px;height:80px;border-radius:50%;border:2px solid rgba(212,160,23,0.5);z-index:5;animation:blinkHint 1.5s ease-in-out infinite;cursor:pointer;';
+    bowlHint.style.cssText = 'position:absolute;top:45%;left:50%;transform:translate(-50%, -50%);width:100px;height:100px;border-radius:50%;border:2px solid rgba(212,160,23,0.5);z-index:5;animation:blinkHint 1.5s ease-in-out infinite;cursor:pointer;';
     scene.appendChild(bowlHint);
 
     const bowlZone = document.createElement('div');
-    bowlZone.style.cssText = 'position:absolute;bottom:200px;left:50%;transform:translateX(-50%);width:120px;height:120px;z-index:6;cursor:pointer;opacity:0.01;';
+    bowlZone.style.cssText = 'position:absolute;top:45%;left:50%;transform:translate(-50%, -50%);width:140px;height:140px;z-index:6;cursor:pointer;opacity:0.01;';
     scene.appendChild(bowlZone);
 
     bowlZone.addEventListener('pointerdown', (e) => {
@@ -1616,8 +1659,8 @@ function sceneExit() {
     scene.innerHTML = '';
     
     // Save Score
+    // Keep call text for submit
     let tStr = gameState.callText ? gameState.callText.replace(/ /g, '') : t('asIs');
-    saveRanking(gameState.score, rankTitle, gameState.ticketName + ' ' + tStr);
 
     const bg = document.createElement('img');
     bg.className = 'bg-img';
@@ -1660,8 +1703,23 @@ function sceneExit() {
         <button class="btn-gold" id="btn-retry">${t('oneMore')}</button>
         <button class="btn-secondary" id="btn-share">${t('shareX')}</button>
       </div>
+      <div id="submit-box" style="margin-top:20px;display:flex;flex-direction:column;align-items:center;background:rgba(0,0,0,0.5);padding:15px;border-radius:12px;border:1px solid #D4A017;">
+        <p style="color:#D4A017;font-size:12px;font-weight:700;margin-bottom:8px;">ランキングに登録</p>
+        <input type="text" id="player-name" maxlength="6" style="text-transform:uppercase;font-size:20px;font-weight:900;text-align:center;padding:10px;border-radius:8px;border:2px solid #D4A017;background:#222;color:#fff;width:150px;font-family:'Noto Sans JP',sans-serif;margin-bottom:12px;" placeholder="NAME">
+        <button class="btn-gold" id="btn-submit-score" style="padding:10px 24px;font-size:14px;width:100%;">登録する</button>
+      </div>
     `;
     scene.appendChild(content);
+
+    const nameInput = content.querySelector('#player-name');
+    nameInput.addEventListener('input', () => { nameInput.value = nameInput.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
+
+    content.querySelector('#btn-submit-score').addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const n = nameInput.value.trim() || 'ANONYM';
+      saveRanking(gameState.score, rankTitle, gameState.ticketName + ' ' + tStr, n);
+      content.querySelector('#submit-box').innerHTML = '<p style="color:#4CAF50;font-weight:900;">登録完了！</p>';
+    });
 
     content.querySelector('#btn-retry').addEventListener('pointerdown', (e) => {
       e.preventDefault();
@@ -1731,16 +1789,16 @@ function sceneWorstEnd(reason) {
 
     var scoreText = document.createElement('p');
     scoreText.style.cssText = 'color:rgba(255,255,255,0.6);font-size:13px;font-weight:700;margin-top:8px;animation:fadeIn 0.5s ease;';
-    scoreText.textContent = gameState.score + '点 | コール: ' + (gameState.callText || 'なし');
+    scoreText.textContent = gameState.score + t('sharePts') + ' | ' + t('shareCall') + ': ' + (gameState.callText || t('shareNone'));
     content.appendChild(scoreText);
 
     var btnRow = document.createElement('div');
     btnRow.style.cssText = 'display:flex;gap:12px;margin-top:20px;justify-content:center;animation:fadeIn 0.5s ease;';
-    btnRow.innerHTML = '<button class="btn-gold" id="btn-retry-w">もう一杯</button><button class="btn-secondary" id="btn-share-w">Xでシェア</button>';
+    btnRow.innerHTML = '<button class="btn-gold" id="btn-retry-w">' + t('oneMore') + '</button><button class="btn-secondary" id="btn-share-w">' + t('shareX') + '</button>';
     content.appendChild(btnRow);
 
     content.querySelector('#btn-retry-w').addEventListener('pointerdown', function(e) { e.preventDefault(); sceneTitle(); });
-    content.querySelector('#btn-share-w').addEventListener('pointerdown', function(e) { e.preventDefault(); shareOnX('🚫 出禁になりました'); });
+    content.querySelector('#btn-share-w').addEventListener('pointerdown', function(e) { e.preventDefault(); shareOnX(t('shareBanned')); });
   }, 1500);
 }
 
