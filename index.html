@@ -15,9 +15,10 @@
 <style>
 /* ===== RESET & BASE ===== */
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-body{background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:'Noto Sans JP',sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none;}
-#game{width:100vw;height:100vh;max-width:480px;max-height:850px;position:relative;overflow:hidden;background:#111;touch-action:manipulation;margin:0 auto;}
-canvas{width:100%;height:100%;object-fit:contain;pointer-events:none;}
+html{position:fixed;width:100%;height:100%;overflow:hidden;}
+body{background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh;min-height:100dvh;font-family:'Noto Sans JP',sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none;position:fixed;width:100%;height:100%;touch-action:none;overscroll-behavior:none;}
+#game{width:100vw;height:100vh;height:100dvh;max-width:480px;max-height:850px;position:relative;overflow:hidden;background:#111;touch-action:none;margin:0 auto;}
+canvas{width:100%;height:100%;object-fit:contain;}
 .scene{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;pointer-events:none;transition:opacity 0.5s ease;display:flex;flex-direction:column;align-items:center;justify-content:center;}
 .scene.active{opacity:1;pointer-events:auto;}
 .bg-img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:0;}
@@ -184,6 +185,64 @@ function playSound(freq, dur, type, vol) {
 }
 document.addEventListener('pointerdown', function _initA() { initAudio(); if(navigator.vibrate) navigator.vibrate(10); }, false);
 
+// ===== PREVENT PAGE SCROLLING / ZOOMING =====
+document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+document.addEventListener('gesturestart', function(e) { e.preventDefault(); }, { passive: false });
+document.addEventListener('gesturechange', function(e) { e.preventDefault(); }, { passive: false });
+document.addEventListener('gestureend', function(e) { e.preventDefault(); }, { passive: false });
+
+// ===== AMBIENT BGM (ガヤガヤ) =====
+let ambientSource = null;
+let ambientGain = null;
+function startAmbientBGM() {
+  if (!audioCtx) initAudio();
+  if (ambientSource) return;
+  try {
+    const sampleRate = audioCtx.sampleRate;
+    const duration = 4;
+    const size = sampleRate * duration;
+    const buffer = audioCtx.createBuffer(2, size, sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = buffer.getChannelData(ch);
+      let lastOut = 0;
+      for (let i = 0; i < size; i++) {
+        const white = Math.random() * 2 - 1;
+        data[i] = (lastOut + (0.02 * white)) / 1.02;
+        lastOut = data[i];
+        data[i] *= 5;
+        // add subtle periodic rumble
+        data[i] += Math.sin(i / sampleRate * 2 * Math.PI * (80 + ch * 20)) * 0.02;
+      }
+    }
+    const src = audioCtx.createBufferSource();
+    src.buffer = buffer;
+    src.loop = true;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 600;
+    filter.Q.value = 0.5;
+    ambientGain = audioCtx.createGain();
+    ambientGain.gain.value = 0.15;
+    src.connect(filter);
+    filter.connect(ambientGain);
+    ambientGain.connect(audioCtx.destination);
+    src.start();
+    ambientSource = src;
+  } catch(e) {}
+}
+function stopAmbientBGM() {
+  if (ambientSource) {
+    try {
+      if (ambientGain) {
+        ambientGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+        setTimeout(() => { try { ambientSource.stop(); } catch(e) {} ambientSource = null; ambientGain = null; }, 600);
+      } else {
+        ambientSource.stop(); ambientSource = null;
+      }
+    } catch(e) { ambientSource = null; ambientGain = null; }
+  }
+}
+
 const GAME_URL = '';
 
 // ===== SUPABASE CONFIG =====
@@ -233,6 +292,7 @@ function clearAllTimers() {
   activeTimers = [];
   activeIntervals = [];
   if (activeRAF) { cancelAnimationFrame(activeRAF); activeRAF = null; }
+  stopAmbientBGM();
 }
 
 function addTimeout(fn, ms) { const t = setTimeout(fn, ms); activeTimers.push(t); return t; }
@@ -269,7 +329,7 @@ const i18n = {
     lookObs: ["隣の人が全マシマシを食べている… すごい量だ","常連らしき人が無言で食券を握りしめている","店から出てきた人が満足そうな顔をしている","並んでいる人がスマホでJIROの写真を見ている"],
     waitMsgs: ["ソワソワ…", "お腹が減った…", "いい匂いがする…", "前の人が食券を握りしめている…", "店員の掛け声が聞こえる…"],
     showTicket: '食券見せてください',
-    tooSlow: 'もたもたすんな！帰れ！',
+    tooSlow: 'お客さん、困りますよ',
     pleaseWait: 'もう少しお待ちください…',
     // Counter sit
     sitMsgs: ["隣の人がすごい勢いで食べている…","ニンニクの匂いが充満している…","水を飲んで待つ…","早く食べたい…","店員が麺を茹でている…"],
@@ -359,7 +419,7 @@ const i18n = {
     lookObs: ["The person next to you is eating full toppings... incredible portion","A regular is silently gripping their ticket","Someone leaving the shop looks very satisfied","A person in line is looking at JIRO photos on their phone"],
     waitMsgs: ["Fidgeting...", "So hungry...", "Smells amazing...", "The person ahead is gripping their ticket...", "You can hear the staff shouting..."],
     showTicket: 'Show me your ticket!',
-    tooSlow: "Too slow! Get out!",
+    tooSlow: "Hey, you're holding up the line!",
     pleaseWait: 'Please wait a moment...',
     sitMsgs: ["The person next to you is eating incredibly fast...","The garlic smell fills the air...","Drinking water while waiting...","Can't wait to eat...","The cook is boiling noodles..."],
     finallySat: 'Finally got a seat...',
@@ -790,7 +850,22 @@ function sceneTicketMachine() {
       card.style.transform = 'scale(1.05)';
       card.style.boxShadow = '0 0 30px rgba(212,160,23,0.5)';
 
-      addTimeout(() => { sceneQueueWait(); }, 1500);
+      // Show transition text: bought ticket, rejoin queue
+      addTimeout(() => {
+        const transScene = showScene('scene-ticket_transition');
+        transScene.innerHTML = '';
+        transScene.style.background = '#111';
+        const tc = document.createElement('div');
+        tc.className = 'content';
+        tc.style.justifyContent = 'center';
+        tc.innerHTML = `
+          <p style="color:#D4A017;font-size:20px;font-weight:900;margin-bottom:16px;animation:dramaticGrow 0.5s ease;">食券を買う番が来た</p>
+          <div style="background:${gameState.ticketColor};color:#000;padding:12px 24px;border-radius:12px;font-size:18px;font-weight:900;margin-bottom:30px;">${gameState.ticketName}</div>
+          <p style="color:rgba(255,255,255,0.6);font-size:14px;font-weight:700;animation:dramaticGrow 0.8s ease;">席が空くまで並び直す…</p>
+        `;
+        transScene.appendChild(tc);
+        addTimeout(() => { sceneQueueWait(); }, 2500);
+      }, 1200);
     });
   });
 }
@@ -799,6 +874,7 @@ function sceneTicketMachine() {
 function sceneQueueWait() {
   const scene = showScene('scene-queue_wait');
   scene.innerHTML = '';
+  startAmbientBGM();
 
   const img = document.createElement('img');
   img.className = 'bg-img';
@@ -867,6 +943,7 @@ function sceneQueueWait() {
   const staffDelay = Math.random() * 4000 + 3000;
   addTimeout(() => {
     clearInterval(timerInt);
+    stopAmbientBGM();
     // Staff face interrupt
     content.innerHTML = `
       <img src="${ASSETS.staff_face}" style="width:150px;height:150px;border-radius:50%;object-fit:cover;border:3px solid #D4A017;margin-bottom:16px;animation:dramaticGrow 0.5s ease;">
@@ -1167,6 +1244,7 @@ function sceneEatingRhythm() {
     canvas.id = 'rhythm-canvas';
     canvas.width = 400;
     canvas.height = 700;
+    canvas.style.pointerEvents = 'auto';
     scene.appendChild(canvas);
     const ctx = canvas.getContext('2d');
 
