@@ -250,7 +250,7 @@ let sceneSEInterval = null;
 
 function stopSceneSE() {
   if (sceneSEInterval) { clearInterval(sceneSEInterval); sceneSEInterval = null; }
-  if (sceneSEGain) {
+  if (sceneSEGain && audioCtx) {
     try {
       sceneSEGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
     } catch(e) {}
@@ -727,8 +727,6 @@ const i18n = {
     largeRamen: '大ラーメン',
     doublePork: '大ぶたダブルラーメン',
     // Queue wait
-    lookAround: '周りを見渡す',
-    lookObs: ["隣の人が全マシマシを食べている… すごい量だ","常連らしき人が無言で食券を握りしめている","店から出てきた人が満足そうな顔をしている","並んでいる人がスマホでJIROの写真を見ている"],
     waitMsgs: ["ソワソワ…", "お腹が減った…", "いい匂いがする…", "前の人が食券を握りしめている…", "店員の掛け声が聞こえる…"],
     showTicket: '食券見せてください',
     tooSlow: 'お客さん、困りますよ',
@@ -817,8 +815,6 @@ const i18n = {
     smallRamen: 'Small Ramen',
     largeRamen: 'Large Ramen',
     doublePork: 'Large Double Pork',
-    lookAround: 'Look around',
-    lookObs: ["The person next to you is eating full toppings... incredible portion","A regular is silently gripping their ticket","Someone leaving the shop looks very satisfied","A person in line is looking at JIRO photos on their phone"],
     waitMsgs: ["Fidgeting...", "So hungry...", "Smells amazing...", "The person ahead is gripping their ticket...", "You can hear the staff shouting..."],
     showTicket: 'Show me your ticket!',
     tooSlow: "Hey, you're holding up the line!",
@@ -872,6 +868,7 @@ const i18n = {
     rankMaster: 'JIRO Master',
     rankLian: 'JIROlian',
     rankIntermediate: 'JIRO Regular',
+    rankBanned: 'Almost Banned',
     rankAllMax: 'Max Topping Champion',
     sharePts: 'pts',
     shareCall: 'Call',
@@ -1404,8 +1401,7 @@ function sceneCounterSit() {
 
   const content = document.createElement('div');
   content.className = 'content';
-  content.style.justifyContent = 'flex-end';
-  content.style.paddingBottom = '80px';
+  content.style.justifyContent = 'center';
   content.innerHTML = `
     <div class="glass" style="padding:20px;text-align:center;">
       <p id="sit-msg" style="color:#fff;font-size:16px;font-weight:700;"></p>
