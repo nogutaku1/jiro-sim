@@ -6,6 +6,7 @@ import { playSound } from '../audio/core.js';
 import { startSceneSE } from '../audio/ambient.js';
 import { ASSETS } from '../assets.js';
 import { sceneEatingRhythm } from './rhythm.js';
+import { randomOwnerLine } from '../ui/drama.js';
 
 export function sceneGarlicCall() {
   const scene = showScene('scene-garlic_call');
@@ -62,8 +63,10 @@ export function sceneGarlicCall() {
   const cdEl = content.querySelector('#countdown-garlic');
   const cdInt = addInterval(() => {
     countVal--;
-    if (countVal > 0) cdEl.textContent = countVal;
-    else { clearInterval(cdInt); doCall(); }
+    if (countVal > 0) {
+      cdEl.textContent = countVal;
+      if (countVal <= 1) randomOwnerLine({ duration: 900 });
+    } else { clearInterval(cdInt); doCall(); }
   }, 1000);
 
   function doCall() {
