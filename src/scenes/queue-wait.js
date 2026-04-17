@@ -6,6 +6,7 @@ import { startAmbientBGM, stopAmbientBGM } from '../audio/ambient.js';
 import { ASSETS } from '../assets.js';
 import { sceneCounterSit } from './counter-sit.js';
 import { sceneWorstEnd } from './worst-end.js';
+import { randomOwnerLine } from '../ui/drama.js';
 
 export function sceneQueueWait() {
   const scene = showScene('scene-queue_wait');
@@ -84,6 +85,7 @@ export function sceneQueueWait() {
       countVal--;
       if (countVal > 0) {
         cdEl.textContent = countVal;
+        if (countVal <= 1 && !success) randomOwnerLine({ duration: 900 });
       } else {
         clearInterval(cdInt);
         if (!success) {
