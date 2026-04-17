@@ -1,10 +1,11 @@
 // ===== SCENE 5: COUNTER SIT =====
-import { t } from '../i18n.js';
+import { t, currentLang } from '../i18n.js';
 import { addTimeout, addInterval } from '../state.js';
 import { showScene } from '../scene-manager.js';
 import { startSceneSE } from '../audio/ambient.js';
 import { ASSETS } from '../assets.js';
 import { sceneGarlicCall } from './call.js';
+import { getCurrentShop } from '../meta/shops.js';
 
 export function sceneCounterSit() {
   const scene = showScene('scene-counter_sit');
@@ -34,7 +35,8 @@ export function sceneCounterSit() {
   const messages = t('sitMsgs');
   let msgIdx = 0;
   const msgEl = content.querySelector('#sit-msg');
-  msgEl.textContent = t('finallySat');
+  const shop = getCurrentShop();
+  msgEl.textContent = (currentLang === 'en' ? shop.tutorialMsgEn : shop.tutorialMsgJa) || t('finallySat');
   msgEl.style.opacity = '1';
 
   function showMsg() {

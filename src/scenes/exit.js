@@ -8,8 +8,23 @@ import { getRankTitle, saveRanking } from '../ranking/score.js';
 import { generateResultImage, saveResultImage } from '../ui/result-card.js';
 import { shareOnX } from '../ui/share.js';
 import { sceneTitle } from './title.js';
+import { sceneKaedama } from './kaedama.js';
+import { markHardcoreWin, bumpPlayCount } from '../meta/shops.js';
 
-export function sceneExit() {
+export function sceneExit(skipKaedama = false) {
+  // Kaedama hook: insert mini refill scene before exit unless already shown or difficulty=hard.
+  if (!skipKaedama && state.difficulty !== 'hard') {
+    sceneKaedama((result) => {
+      if (result && result.restraint) state.secretsFound.push('restraint');
+      if (result && result.kaedama && result.kaedamaSuccess) state.secretsFound.push('kaedama_clear');
+      sceneExit(true);
+    });
+    return;
+  }
+
+  // Update shop-unlock counters on first arrival at exit.
+  try { bumpPlayCount(); if (state.difficulty === 'hard') markHardcoreWin(); } catch(e) {}
+
   const scene = showScene('scene-exit');
   scene.innerHTML = '';
   startSceneSE('calm');
