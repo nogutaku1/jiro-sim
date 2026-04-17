@@ -171,6 +171,7 @@ export function sceneExit() {
 
   function showBadEnd() {
     clearAllTimers();
+    window.dispatchEvent(new CustomEvent('jiro:game-end', { detail: { event: 'bad-end', isGoodEnd: false } }));
     scene.innerHTML = '';
     scene.style.background = '#0a0a0a';
 
@@ -207,6 +208,7 @@ export function sceneExit() {
 
   function showGoodEnd() {
     clearAllTimers();
+    window.dispatchEvent(new CustomEvent('jiro:game-end', { detail: { event: 'game-end', isGoodEnd: true } }));
     scene.innerHTML = '';
 
     const tStr = state.callText ? state.callText.replace(/ /g, '') : t('asIs');
